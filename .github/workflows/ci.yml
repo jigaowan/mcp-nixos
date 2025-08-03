@@ -3,8 +3,28 @@ name: CI
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'website/**'
+      - '.github/*.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.cursorrules'
+      - 'RELEASE_NOTES.md'
+      - 'RELEASE_WORKFLOW.md'
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'website/**'
+      - '.github/*.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.cursorrules'
+      - 'RELEASE_NOTES.md'
+      - 'RELEASE_WORKFLOW.md'
 
 permissions:
   contents: read
