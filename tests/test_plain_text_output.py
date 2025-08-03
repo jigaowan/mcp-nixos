@@ -1,18 +1,48 @@
 """Test suite for plain text output validation."""
 
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
-from mcp_nixos.server import (
-    error,
-    nixos_search,
-    nixos_info,
-    nixos_stats,
-    home_manager_search,
-    home_manager_info,
-    home_manager_stats,
-    home_manager_list_options,
-    darwin_search,
-)
+import pytest
+from mcp_nixos import server
+from mcp_nixos.server import error
+
+
+def get_tool_function(tool_name: str):
+    """Get the underlying function from a FastMCP tool."""
+    tool = getattr(server, tool_name)
+    if hasattr(tool, "fn"):
+        return tool.fn
+    return tool
+
+
+# Get the underlying functions for direct use
+darwin_search = get_tool_function("darwin_search")
+home_manager_info = get_tool_function("home_manager_info")
+home_manager_list_options = get_tool_function("home_manager_list_options")
+home_manager_search = get_tool_function("home_manager_search")
+home_manager_stats = get_tool_function("home_manager_stats")
+nixos_info = get_tool_function("nixos_info")
+nixos_search = get_tool_function("nixos_search")
+nixos_stats = get_tool_function("nixos_stats")
+
+
+@pytest.fixture(autouse=True)
+def mock_channel_cache():
+    """Mock channel cache to avoid API calls during tests."""
+    with patch("mcp_nixos.server.channel_cache") as mock_cache:
+        # Mock the channel cache methods
+        mock_cache.get_resolved.return_value = {
+            "unstable": "latest-43-nixos-unstable",
+            "stable": "latest-43-nixos-25.05",
+            "25.05": "latest-43-nixos-25.05",
+            "24.11": "latest-43-nixos-24.11",
+        }
+        mock_cache.get_available.return_value = {
+            "latest-43-nixos-unstable": 150000,
+            "latest-43-nixos-25.05": 140000,
+            "latest-43-nixos-24.11": 130000,
+        }
+        yield mock_cache
 
 
 class TestPlainTextOutput:
@@ -31,7 +61,8 @@ class TestPlainTextOutput:
         assert "<error>" not in result
 
     @patch("mcp_nixos.server.requests.post")
-    def test_nixos_search_plain_text(self, mock_post):
+    @pytest.mark.asyncio
+    async def test_nixos_search_plain_text(self, mock_post):
         """Test nixos_search returns plain text."""
         # Mock response
         mock_response = Mock()
@@ -51,7 +82,7 @@ class TestPlainTextOutput:
         mock_response.raise_for_status = Mock()
         mock_post.return_value = mock_response
 
-        result = nixos_search("firefox", search_type="packages", limit=5)
+        result = await nixos_search("firefox", search_type="packages", limit=5)
         assert "Found 1 packages matching 'firefox':" in result
         assert "• firefox (123.0)" in result
         assert "  A web browser" in result
@@ -59,7 +90,8 @@ class TestPlainTextOutput:
         assert "<name>" not in result
 
     @patch("mcp_nixos.server.requests.post")
-    def test_nixos_info_plain_text(self, mock_post):
+    @pytest.mark.asyncio
+    async def test_nixos_info_plain_text(self, mock_post):
         """Test nixos_info returns plain text."""
         # Mock response
         mock_response = Mock()
@@ -81,7 +113,7 @@ class TestPlainTextOutput:
         mock_response.raise_for_status = Mock()
         mock_post.return_value = mock_response
 
-        result = nixos_info("firefox", type="package")
+        result = await nixos_info("firefox", type="package")
         assert "Package: firefox" in result
         assert "Version: 123.0" in result
         assert "Description: A web browser" in result
@@ -90,7 +122,8 @@ class TestPlainTextOutput:
         assert "<package_info>" not in result
 
     @patch("mcp_nixos.server.requests.post")
-    def test_nixos_stats_plain_text(self, mock_post):
+    @pytest.mark.asyncio
+    async def test_nixos_stats_plain_text(self, mock_post):
         """Test nixos_stats returns plain text."""
         # Mock response
         mock_response = Mock()
@@ -98,14 +131,15 @@ class TestPlainTextOutput:
         mock_response.raise_for_status = Mock()
         mock_post.return_value = mock_response
 
-        result = nixos_stats()
+        result = await nixos_stats()
         assert "NixOS Statistics for unstable channel:" in result
         assert "• Packages: 12,345" in result
         assert "• Options: 12,345" in result
         assert "<nixos_stats>" not in result
 
     @patch("mcp_nixos.server.requests.get")
-    def test_home_manager_search_plain_text(self, mock_get):
+    @pytest.mark.asyncio
+    async def test_home_manager_search_plain_text(self, mock_get):
         """Test home_manager_search returns plain text."""
         # Mock HTML response
         mock_response = Mock()
@@ -121,7 +155,7 @@ class TestPlainTextOutput:
         mock_response.raise_for_status = Mock()
         mock_get.return_value = mock_response
 
-        result = home_manager_search("git", limit=5)
+        result = await home_manager_search("git", limit=5)
         assert "Found 1 Home Manager options matching 'git':" in result
         assert "• programs.git.enable" in result
         assert "  Type: boolean" in result
@@ -129,7 +163,8 @@ class TestPlainTextOutput:
         assert "<option>" not in result
 
     @patch("mcp_nixos.server.requests.get")
-    def test_home_manager_info_plain_text(self, mock_get):
+    @pytest.mark.asyncio
+    async def test_home_manager_info_plain_text(self, mock_get):
         """Test home_manager_info returns plain text."""
         # Mock HTML response
         mock_response = Mock()
@@ -145,14 +180,15 @@ class TestPlainTextOutput:
         mock_response.raise_for_status = Mock()
         mock_get.return_value = mock_response
 
-        result = home_manager_info("programs.git.enable")
+        result = await home_manager_info("programs.git.enable")
         assert "Option: programs.git.enable" in result
         assert "Type: boolean" in result
         assert "Description: Enable git" in result
         assert "<option_info>" not in result
 
     @patch("mcp_nixos.server.parse_html_options")
-    def test_home_manager_stats_plain_text(self, mock_parse):
+    @pytest.mark.asyncio
+    async def test_home_manager_stats_plain_text(self, mock_parse):
         """Test home_manager_stats returns plain text."""
         # Mock parsed options
         mock_parse.return_value = [
@@ -164,7 +200,7 @@ class TestPlainTextOutput:
             {"name": "xsession.enable", "type": "boolean", "description": "Enable X session"},
         ]
 
-        result = home_manager_stats()
+        result = await home_manager_stats()
         assert "Home Manager Statistics:" in result
         assert "Total options:" in result
         assert "Categories:" in result
@@ -174,7 +210,8 @@ class TestPlainTextOutput:
         assert "<home_manager_stats>" not in result
 
     @patch("mcp_nixos.server.requests.get")
-    def test_home_manager_list_options_plain_text(self, mock_get):
+    @pytest.mark.asyncio
+    async def test_home_manager_list_options_plain_text(self, mock_get):
         """Test home_manager_list_options returns plain text."""
         # Mock HTML response
         mock_response = Mock()
@@ -189,14 +226,15 @@ class TestPlainTextOutput:
         mock_response.raise_for_status = Mock()
         mock_get.return_value = mock_response
 
-        result = home_manager_list_options()
+        result = await home_manager_list_options()
         assert "Home Manager option categories (2 total):" in result
         assert "• programs (1 options)" in result
         assert "• services (1 options)" in result
         assert "<option_categories>" not in result
 
     @patch("mcp_nixos.server.requests.get")
-    def test_darwin_search_plain_text(self, mock_get):
+    @pytest.mark.asyncio
+    async def test_darwin_search_plain_text(self, mock_get):
         """Test darwin_search returns plain text."""
         # Mock HTML response
         mock_response = Mock()
@@ -212,7 +250,7 @@ class TestPlainTextOutput:
         mock_response.raise_for_status = Mock()
         mock_get.return_value = mock_response
 
-        result = darwin_search("dock", limit=5)
+        result = await darwin_search("dock", limit=5)
         assert "Found 1 nix-darwin options matching 'dock':" in result
         assert "• system.defaults.dock.autohide" in result
         assert "  Type: boolean" in result
@@ -220,7 +258,8 @@ class TestPlainTextOutput:
         assert "<option>" not in result
 
     @patch("mcp_nixos.server.requests.get")
-    def test_no_results_plain_text(self, mock_get):
+    @pytest.mark.asyncio
+    async def test_no_results_plain_text(self, mock_get):
         """Test empty results return appropriate plain text."""
         # Mock empty HTML response
         mock_response = Mock()
@@ -228,12 +267,13 @@ class TestPlainTextOutput:
         mock_response.raise_for_status = Mock()
         mock_get.return_value = mock_response
 
-        result = home_manager_search("nonexistent", limit=5)
+        result = await home_manager_search("nonexistent", limit=5)
         assert result == "No Home Manager options found matching 'nonexistent'"
         assert "<" not in result
 
     @patch("mcp_nixos.server.requests.post")
-    def test_nixos_empty_search_plain_text(self, mock_post):
+    @pytest.mark.asyncio
+    async def test_nixos_empty_search_plain_text(self, mock_post):
         """Test nixos_search with no results returns plain text."""
         # Mock empty response
         mock_response = Mock()
@@ -241,6 +281,6 @@ class TestPlainTextOutput:
         mock_response.raise_for_status = Mock()
         mock_post.return_value = mock_response
 
-        result = nixos_search("nonexistent", search_type="packages")
+        result = await nixos_search("nonexistent", search_type="packages")
         assert result == "No packages found matching 'nonexistent'"
         assert "<" not in result

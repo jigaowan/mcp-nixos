@@ -3,11 +3,15 @@
 [![CI](https://github.com/utensils/mcp-nixos/actions/workflows/ci.yml/badge.svg)](https://github.com/utensils/mcp-nixos/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/utensils/mcp-nixos/graph/badge.svg?token=kdcbgvq4Bh)](https://codecov.io/gh/utensils/mcp-nixos)
 [![PyPI](https://img.shields.io/pypi/v/mcp-nixos.svg)](https://pypi.org/project/mcp-nixos/)
-[![Python Versions](https://img.shields.io/pypi/pyversions/mcp-nixos.svg)](https://pypi.org/project/mcp-nixos/)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/)
 [![smithery badge](https://smithery.ai/badge/@utensils/mcp-nixos)](https://smithery.ai/server/@utensils/mcp-nixos)
 [![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/99cc55fb-a5c5-4473-b315-45a6961b2e8c)
 
 > **🎉 REFACTORED**: Version 1.0.0 represents a complete rewrite that drastically simplified everything. We removed all the complex caching, abstractions, and "enterprise" patterns. Because sometimes less is more, and more is just showing off.
+>
+> **🚀 ASYNC UPDATE**: Version 1.0.1 migrated to FastMCP 2.x for modern async goodness. Because who doesn't love adding `await` to everything?
 
 ## Quick Start (Because You Want to Use It NOW)
 
@@ -103,12 +107,13 @@ nix profile install github:utensils/mcp-nixos
 
 ## Features Worth Mentioning
 
-### 🚀 Version 1.0.0: The Great Simplification
-- **Drastically less code** - Removed thousands of lines of complexity
-- **100% functionality** - Everything still works
-- **0% cache corruption** - Because we removed the cache entirely
-- **Stateless operation** - No files to clean up
-- **Direct API access** - No abstraction nonsense
+### 🚀 Version 1.0.1: The Async Revolution (After The Great Simplification)
+- **Drastically less code** - v1.0.0 removed thousands of lines, v1.0.1 made them async
+- **100% functionality** - Everything still works, now with more `await`
+- **0% cache corruption** - Because we removed the cache entirely (still gone!)
+- **Stateless operation** - No files to clean up (async doesn't change this)
+- **Direct API access** - No abstraction nonsense (but now it's async nonsense)
+- **Modern MCP** - FastMCP 2.x because the old MCP was too synchronous
 
 ### 📊 What You Get
 - **Real-time data** - Always current, never stale
@@ -126,31 +131,74 @@ nix profile install github:utensils/mcp-nixos
 
 ## For Developers (The Brave Ones)
 
+### Local Development Setup
+
+Want to test your changes in Claude Code or another MCP client? Create a `.mcp.json` file in your project directory:
+
+```json
+{
+  "mcpServers": {
+    "nixos": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/home/hackerman/Projects/mcp-nixos",
+        "mcp-nixos"
+      ]
+    }
+  }
+}
+```
+
+Replace `/home/hackerman/Projects/mcp-nixos` with your actual project path (yes, even you, Windows users with your `C:\Users\CoolDev\...` paths).
+
+This `.mcp.json` file:
+- **Automatically activates** when you launch Claude Code from the project directory
+- **Uses your local code** instead of the installed package
+- **Enables real-time testing** - just restart Claude Code after changes
+- **Already in .gitignore** so you won't accidentally commit your path
+
 ### With Nix (The Blessed Path)
 ```bash
 nix develop
 menu  # Shows all available commands
 
 # Common tasks
-run        # Start the server
-run-tests  # Run all tests
-lint       # Format and check code
-typecheck  # Check types
+run        # Start the server (now with FastMCP!)
+run-tests  # Run all tests (now async!)
+lint       # Format and check code (ruff replaced black/flake8)
+typecheck  # Check types (mypy still judges you)
+build      # Build the package
+publish    # Upload to PyPI (requires credentials)
 ```
 
 ### Without Nix (The Path of Pain)
 ```bash
-pip install -e ".[dev]"
-pytest tests/
-black mcp_nixos/
-flake8 mcp_nixos/
+# Install development dependencies
+uv pip install -e ".[dev]"  # or pip install -e ".[dev]"
+
+# Run the server locally
+uv run mcp-nixos  # or python -m mcp_nixos.server
+
+# Development commands
+pytest tests/          # Now with asyncio goodness
+ruff format mcp_nixos/ # black is so 2023
+ruff check mcp_nixos/  # flake8 is for boomers
+mypy mcp_nixos/        # Still pedantic as ever
+
+# Build and publish
+python -m build        # Build distributions
+twine upload dist/*    # Upload to PyPI
 ```
 
 ### Testing Philosophy
-- **367 tests** that actually test things
-- **Real API calls** because mocks are for cowards
+- **367 tests** that actually test things (now async because why not)
+- **Real API calls** because mocks are for cowards (await real_courage())
 - **Plain text validation** ensuring no XML leaks through
 - **Cross-platform tests** because Windows users deserve pain too
+- **15 test files** down from 29 because organization is a virtue
 
 ## Environment Variables
 
@@ -182,21 +230,6 @@ nix run --option sandbox relaxed github:utensils/mcp-nixos --
 sandbox = relaxed
 ```
 
-### Connection Timeouts
-
-First-time runs may timeout while downloading dependencies. **Solution**: Pre-cache by running once:
-```bash
-# For Nix users
-nix run github:utensils/mcp-nixos
-
-# Or install to profile
-nix profile install github:utensils/mcp-nixos
-```
-
-### JetBrains IDE Issues
-
-If using with JetBrains IDEs (IntelliJ, PyCharm, etc.), ensure the MCP server is pre-cached before configuring in the IDE to avoid Copilot agent crashes.
-
 ## Acknowledgments
 
 This project queries data from several amazing services:
@@ -212,6 +245,6 @@ MIT - Because sharing is caring, even if the code hurts.
 
 ---
 
-_Created by James Brink and maintained by masochists who enjoy Nix._
+_Created by James Brink and maintained by masochists who enjoy Nix and async/await patterns._
 
 _Special thanks to the NixOS project for creating an OS that's simultaneously the best and worst thing ever._

@@ -62,6 +62,10 @@ result
 *~
 .vscode/
 
+# MCP local configuration
+.mcp.json
+.mcp-nix.json
+
 # Misc
 temp
 tmp
@@ -92,3 +96,4 @@ TODO.md
 /website/.pnpm-store/
 /website/.DS_Store
 /website/*.pem
+reference-mcp-coroot/

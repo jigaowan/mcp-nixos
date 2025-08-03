@@ -5,21 +5,24 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     devshell.url = "github:numtide/devshell";
-    pyproject-nix = {
-      url = "github:nix-community/pyproject.nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs = { self, nixpkgs, flake-utils, devshell, pyproject-nix }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+      devshell,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = import nixpkgs {
           inherit system;
           overlays = [ devshell.overlays.default ];
         };
 
-        pythonVersion = "311";
+        pythonVersion = "312";
         python = pkgs."python${pythonVersion}";
         ps = pkgs."python${pythonVersion}Packages";
 
@@ -64,10 +67,10 @@
           if command -v uv >/dev/null 2>&1; then
             echo "(Using uv)"
             # Install with all optional dependencies for development
-            uv pip install ".[dev,evals]"
+            uv pip install ".[dev]"
           else
             echo "(Using pip)"
-            python -m pip install ".[dev,evals]"
+            python -m pip install ".[dev]"
           fi
 
           if [ -f "setup.py" ] || [ -f "pyproject.toml" ]; then
@@ -83,40 +86,40 @@
 
           # List installed packages for verification
           echo "Installed dependencies:"
-          pip list | grep -E "requests|mcp|beautifulsoup4|python-dotenv"
-          
+          pip list | grep -E "requests|fastmcp|beautifulsoup4"
+
           echo "✓ Python environment setup complete in ./.venv"
           echo "---------------------------------------------"
         '';
 
-        # Setup for Python package - using simpler buildPythonApplication approach
-        pythonPackage = let
-          pyproject = nixpkgs.lib.importTOML ./pyproject.toml;
-        in
-          pkgs.python311Packages.buildPythonApplication {
+        # Setup for Python package - using Python 3.12 which has fastmcp in nixpkgs
+        pythonPackage =
+          let
+            pyproject = nixpkgs.lib.importTOML ./pyproject.toml;
+          in
+          pkgs.python312Packages.buildPythonApplication {
             pname = pyproject.project.name;
             inherit (pyproject.project) version;
             meta.mainProgram = pyproject.project.name;
-            
+
             src = ./.;
-            
+
             format = "pyproject";
-            
-            nativeBuildInputs = with pkgs.python311Packages; [
+
+            nativeBuildInputs = with pkgs.python312Packages; [
               hatchling
             ];
-            
-            propagatedBuildInputs = with pkgs.python311Packages; [
-              mcp
+
+            propagatedBuildInputs = with pkgs.python312Packages; [
+              # Use fastmcp from nixpkgs
+              fastmcp
               requests
-              python-dotenv
               beautifulsoup4
-              psutil
             ];
-            
+
             # Disable runtime dependency checks since the available versions in nixpkgs
             # may not match exactly what's specified in pyproject.toml
-            pythonImportsCheck = [];
+            pythonImportsCheck = [ ];
             doCheck = false;
             dontCheckRuntimeDeps = true;
           };
@@ -128,7 +131,7 @@
           default = pythonPackage;
           mcp-nixos = pythonPackage;
         };
-        
+
         # Add apps for direct execution with nix run
         apps = {
           default = flake-utils.lib.mkApp {
@@ -140,7 +143,7 @@
             name = "mcp-nixos";
           };
         };
-        
+
         # Create a separate shell for website development
         devShells.web = pkgs.devshell.mkShell {
           name = "mcp-nixos-web";
@@ -185,7 +188,7 @@
             menu
           '';
         };
-        
+
         devShells.default = pkgs.devshell.mkShell {
           name = "mcp-nixos";
           motd = ''
@@ -194,16 +197,37 @@
             Nix:    ${pkgs.nix}/bin/nix --version
           '';
           env = [
-            { name = "PYTHONPATH"; value = "$PWD"; }
-            { name = "MCP_NIXOS_ENV"; value = "development"; }
-            { name = "LIBFFI_INCLUDE_DIR"; value = "${pkgs.libffi.dev}/include"; } # Add .dev
+            {
+              name = "PYTHONPATH";
+              value = "$PWD";
+            }
+            {
+              name = "MCP_NIXOS_ENV";
+              value = "development";
+            }
+            {
+              name = "LIBFFI_INCLUDE_DIR";
+              value = "${pkgs.libffi.dev}/include";
+            } # Add .dev
             # Make sure Python can find _ctypes with correct linking flags
-            { name = "NIX_LDFLAGS"; value = "-L${pkgs.libffi}/lib -L${pkgs.libffi.out}/lib"; }
-            { name = "NIX_CFLAGS_COMPILE"; value = "-I${pkgs.libffi.dev}/include"; }
+            {
+              name = "NIX_LDFLAGS";
+              value = "-L${pkgs.libffi}/lib -L${pkgs.libffi.out}/lib";
+            }
+            {
+              name = "NIX_CFLAGS_COMPILE";
+              value = "-I${pkgs.libffi.dev}/include";
+            }
             # For macOS specifically
-            { name = "DYLD_LIBRARY_PATH"; value = "${pkgs.libffi}/lib:${pkgs.libffi.out}/lib"; }
+            {
+              name = "DYLD_LIBRARY_PATH";
+              value = "${pkgs.libffi}/lib:${pkgs.libffi.out}/lib";
+            }
             # Add SDK path for macOS if needed
-            { name = "SDKROOT"; value = "${pkgs.darwin.apple_sdk.frameworks.CoreServices}"; }
+            {
+              name = "SDKROOT";
+              value = "${pkgs.darwin.apple_sdk.frameworks.CoreServices}";
+            }
           ];
           packages = with pkgs; [
             # Python with build dependencies
@@ -218,26 +242,25 @@
             binutils
             stdenv.cc.cc
 
-            # Linters & Formatters
-            ps.black
-            ps.flake8
-            ps.pylint
-            # Standalone pyright package for cross-platform type checking
-            pyright
+            # Modern linting and formatting tools
+            ps.ruff # Replaces black, flake8, isort, and more
+            ps.mypy # Type checker
+            # Type stubs for dependencies
+            ps.types-requests
+            ps.types-beautifulsoup4
 
             # Testing
             ps.pytest
             ps."pytest-cov"
-            # ps.pytest-asyncio # Usually installed via pip/uv into venv
+            ps."pytest-asyncio"
 
             # Nix & Git
             nix
             nixos-option
             git
 
-            # AI Tools
-            code2prompt
-            llm
+            # GitHub CLI for repository management
+            gh
 
             # Remove Node.js from main dev shell to avoid conflicts
           ];
@@ -273,7 +296,7 @@
                   echo "Activating venv..."
                   source .venv/bin/activate
                 fi
-                
+
                 # Verify key dependencies
                 echo "Verifying dependencies before running tests..."
                 if ! python -c "import requests" &>/dev/null; then
@@ -284,10 +307,10 @@
                     python -m pip install requests>=2.32.3
                   fi
                 fi
-                
+
                 # Set up parameters based on arguments
                 TEST_ARGS=""
-                
+
                 # Handle the unit/integration flags
                 # These arguments get passed directly to pytest
                 if [[ $# -gt 0 && "$1" == "--unit" ]]; then
@@ -304,7 +327,7 @@
                   # This helps certain tests that need to run in isolation skip when run in a full suite
                   export RUNNING_ALL_TESTS=1
                 fi
-                
+
                 # Check if running in CI environment
                 COVERAGE_ARGS=""
                 JUNIT_ARGS=""
@@ -314,9 +337,8 @@
                   JUNIT_ARGS="--junitxml=junit.xml -o junit_family=legacy"
                   echo "Using coverage and JUnit XML (CI environment)"
                 fi
-                
-                # For local development, always run all tests including evals
-                # In CI, the workflow will handle excluding anthropic tests for external contributors
+
+                # Run all tests
                 if [ -n "$TEST_ARGS" ]; then
                   echo "Running: pytest tests/ -v $TEST_ARGS $COVERAGE_ARGS $JUNIT_ARGS $@"
                   eval "pytest tests/ -v $TEST_ARGS $COVERAGE_ARGS $JUNIT_ARGS $@"
@@ -325,7 +347,7 @@
                   echo "Note: Running all tests including eval tests. In CI, eval tests are skipped for external contributors."
                   pytest tests/ -v $COVERAGE_ARGS $JUNIT_ARGS "$@"
                 fi
-                
+
                 # Show coverage report message if applicable
                 if [ -n "$COVERAGE_ARGS" ]; then
                   echo "✅ Coverage report generated. HTML report available in htmlcov/"
@@ -356,48 +378,45 @@
             {
               name = "lint";
               category = "development";
-              help = "Format with Black and then lint code with Flake8 and Pylint (only checks format in CI)";
+              help = "Lint code with ruff (checks only in CI)";
               command = ''
                 # Check if running in CI environment
                 if [ "$(printenv CI 2>/dev/null)" != "" ] || [ "$(printenv GITHUB_ACTIONS 2>/dev/null)" != "" ]; then
-                  echo "--- CI detected: Checking formatting with Black ---"
-                  black --check mcp_nixos/ tests/
+                  echo "--- CI detected: Checking with ruff ---"
+                  ruff check mcp_nixos/ tests/
                 else
-                  echo "--- Formatting code with Black ---"
-                  black mcp_nixos/ tests/
+                  echo "--- Linting code with ruff ---"
+                  ruff check mcp_nixos/ tests/
                 fi
-                echo "--- Running Flake8 linter ---"
-                flake8 mcp_nixos/ tests/
-                echo "--- Running Pylint analyzer ---"
-                if [ -z "$VIRTUAL_ENV" ]; then source .venv/bin/activate; fi
-                python -m pylint mcp_nixos/ tests/ || true
               '';
             }
             {
-              name = "typecheck"; # Added a dedicated command for clarity
+              name = "typecheck";
               category = "development";
-              help = "Run pyright type checker";
-              command = "pyright"; # Direct command
+              help = "Run mypy type checker";
+              command = ''
+                echo "--- Running mypy type checker ---"
+                if [ -z "$VIRTUAL_ENV" ]; then source .venv/bin/activate; fi
+                mypy mcp_nixos/
+              '';
             }
             {
-              name = "check-pylint";
+              name = "check-ruff";
               category = "development";
-              help = "Run pylint static code analyzer";
+              help = "Run ruff linter with detailed output";
               command = ''
-                echo "--- Running Pylint ---"
-                if [ -z "$VIRTUAL_ENV" ]; then source .venv/bin/activate; fi
-                # Run pylint with reasonable defaults for our project
-                python -m pylint mcp_nixos/ tests/ || true
-                echo "✅ Pylint analysis complete"
+                echo "--- Running ruff check ---"
+                ruff check mcp_nixos/ tests/ --show-fixes
+                echo "✅ Ruff check complete"
               '';
             }
             {
               name = "format";
               category = "development";
-              help = "Format code with Black";
+              help = "Format code with ruff";
               command = ''
-                echo "--- Formatting code with Black ---"
-                black mcp_nixos/ tests/
+                echo "--- Formatting code with ruff ---"
+                ruff format mcp_nixos/ tests/
                 echo "✅ Code formatted"
               '';
             }
@@ -439,7 +458,7 @@
               help = "Run wily to analyze code complexity (requires command argument: build|report|graph|rank|diff)";
               command = ''
                 if [ -z "$VIRTUAL_ENV" ]; then source .venv/bin/activate; fi
-                
+
                 # Check if wily is installed
                 if ! command -v wily >/dev/null 2>&1; then
                   echo "Installing wily..."
@@ -449,7 +468,7 @@
                     python -m pip install wily
                   fi
                 fi
-                
+
                 # Check if argument is provided
                 if [ $# -eq 0 ]; then
                   echo "=== Wily Code Complexity Analysis ==="
@@ -471,7 +490,7 @@
                   echo "  complexity diff origin/main"
                   exit 1
                 fi
-                
+
                 # Subcommands
                 case "$1" in
                   build)
@@ -567,5 +586,6 @@
             menu
           '';
         };
-      });
+      }
+    );
 }

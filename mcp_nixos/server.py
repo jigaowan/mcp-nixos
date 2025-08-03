@@ -9,11 +9,12 @@ Provides search and query capabilities for:
 All responses are formatted as human-readable plain text for optimal LLM interaction.
 """
 
-from mcp.server.fastmcp import FastMCP
-import requests
 import re
-from typing import Dict, List, Optional
+from typing import Any
+
+import requests
 from bs4 import BeautifulSoup
+from fastmcp import FastMCP
 
 
 class APIError(Exception):
@@ -24,7 +25,6 @@ class DocumentParseError(Exception):
     """Custom exception for document parsing errors."""
 
 
-# Note: formatters.py functions were inlined for simplicity
 mcp = FastMCP("mcp-nixos")
 
 # API Configuration
@@ -45,24 +45,24 @@ DARWIN_URL = "https://nix-darwin.github.io/nix-darwin/manual/index.html"
 class ChannelCache:
     """Cache for discovered channels and resolved mappings."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize empty cache."""
-        self.available_channels = None
-        self.resolved_channels = None
+        self.available_channels: dict[str, str] | None = None
+        self.resolved_channels: dict[str, str] | None = None
 
-    def get_available(self) -> Dict[str, str]:
+    def get_available(self) -> dict[str, str]:
         """Get available channels, discovering if needed."""
         if self.available_channels is None:
             self.available_channels = self._discover_available_channels()
-        return self.available_channels
+        return self.available_channels if self.available_channels is not None else {}
 
-    def get_resolved(self) -> Dict[str, str]:
+    def get_resolved(self) -> dict[str, str]:
         """Get resolved channel mappings, resolving if needed."""
         if self.resolved_channels is None:
             self.resolved_channels = self._resolve_channels()
-        return self.resolved_channels
+        return self.resolved_channels if self.resolved_channels is not None else {}
 
-    def _discover_available_channels(self) -> Dict[str, str]:
+    def _discover_available_channels(self) -> dict[str, str]:
         """Discover available NixOS channels by testing API patterns."""
         # Test multiple generation patterns (43, 44, 45) and versions
         generations = [43, 44, 45, 46]  # Future-proof
@@ -88,7 +88,7 @@ class ChannelCache:
 
         return available
 
-    def _resolve_channels(self) -> Dict[str, str]:
+    def _resolve_channels(self) -> dict[str, str]:
         """Resolve user-friendly channel names to actual indices."""
         available = self.get_available()
         resolved = {}
@@ -128,12 +128,12 @@ class ChannelCache:
             resolved[current_stable[2]] = current_stable[3]  # version -> pattern
 
             # Add other version mappings (prefer higher generation/count for same version)
-            version_patterns = {}
-            for major, minor, version, pattern, count in stable_candidates:
+            version_patterns: dict[str, tuple[str, int]] = {}
+            for _major, _minor, version, pattern, count in stable_candidates:
                 if version not in version_patterns or count > version_patterns[version][1]:
                     version_patterns[version] = (pattern, count)
 
-            for version, (pattern, count) in version_patterns.items():
+            for version, (pattern, _count) in version_patterns.items():
                 resolved[version] = pattern
 
         # Add beta (alias for stable)
@@ -154,7 +154,7 @@ def error(msg: str, code: str = "ERROR") -> str:
     return f"Error ({code}): {msg}"
 
 
-def get_channels() -> Dict[str, str]:
+def get_channels() -> dict[str, str]:
     """Get current channel mappings (cached and resolved)."""
     return channel_cache.get_resolved()
 
@@ -199,7 +199,7 @@ def get_channel_suggestions(invalid_channel: str) -> str:
     return f"Available channels: {', '.join(suggestions)}"
 
 
-def es_query(index: str, query: dict, size: int = 20) -> List[dict]:
+def es_query(index: str, query: dict[str, Any], size: int = 20) -> list[dict[str, Any]]:
     """Execute Elasticsearch query."""
     try:
         resp = requests.post(
@@ -211,7 +211,7 @@ def es_query(index: str, query: dict, size: int = 20) -> List[dict]:
         if isinstance(data, dict) and "hits" in data:
             hits = data.get("hits", {})
             if isinstance(hits, dict) and "hits" in hits:
-                return hits.get("hits", [])
+                return list(hits.get("hits", []))
         return []
     except requests.Timeout as exc:
         raise APIError("API error: Connection timed out") from exc
@@ -221,7 +221,7 @@ def es_query(index: str, query: dict, size: int = 20) -> List[dict]:
         raise APIError(f"API error: {str(exc)}") from exc
 
 
-def parse_html_options(url: str, query: str = "", prefix: str = "", limit: int = 100) -> List[Dict[str, str]]:
+def parse_html_options(url: str, query: str = "", prefix: str = "", limit: int = 100) -> list[dict[str, str]]:
     """Parse options from HTML documentation."""
     try:
         resp = requests.get(url, timeout=30)  # Increase timeout for large docs
@@ -311,7 +311,7 @@ def parse_html_options(url: str, query: str = "", prefix: str = "", limit: int =
 
 
 @mcp.tool()
-def nixos_search(query: str, search_type: str = "packages", limit: int = 20, channel: str = "unstable") -> str:
+async def nixos_search(query: str, search_type: str = "packages", limit: int = 20, channel: str = "unstable") -> str:
     """Search NixOS packages, options, or programs.
 
     Args:
@@ -334,7 +334,7 @@ def nixos_search(query: str, search_type: str = "packages", limit: int = 20, cha
 
     # Redirect flakes to dedicated function
     if search_type == "flakes":
-        return nixos_flakes_search(query, limit)
+        return await _nixos_flakes_search_impl(query, limit)
 
     try:
         # Build query with correct field names
@@ -428,7 +428,7 @@ def nixos_search(query: str, search_type: str = "packages", limit: int = 20, cha
 
 
 @mcp.tool()
-def nixos_info(name: str, type: str = "package", channel: str = "unstable") -> str:  # pylint: disable=redefined-builtin
+async def nixos_info(name: str, type: str = "package", channel: str = "unstable") -> str:  # pylint: disable=redefined-builtin
     """Get detailed info about a NixOS package or option.
 
     Args:
@@ -511,7 +511,7 @@ def nixos_info(name: str, type: str = "package", channel: str = "unstable") -> s
 
 
 @mcp.tool()
-def nixos_channels() -> str:
+async def nixos_channels() -> str:
     """List available NixOS channels with their status.
 
     Returns:
@@ -563,7 +563,7 @@ def nixos_channels() -> str:
 
 
 @mcp.tool()
-def nixos_stats(channel: str = "unstable") -> str:
+async def nixos_stats(channel: str = "unstable") -> str:
     """Get NixOS statistics for a channel.
 
     Args:
@@ -608,7 +608,7 @@ def nixos_stats(channel: str = "unstable") -> str:
 
 
 @mcp.tool()
-def home_manager_search(query: str, limit: int = 20) -> str:
+async def home_manager_search(query: str, limit: int = 20) -> str:
     """Search Home Manager configuration options.
 
     Searches through available Home Manager options by name and description.
@@ -647,7 +647,7 @@ def home_manager_search(query: str, limit: int = 20) -> str:
 
 
 @mcp.tool()
-def home_manager_info(name: str) -> str:
+async def home_manager_info(name: str) -> str:
     """Get detailed information about a specific Home Manager option.
 
     Requires an exact option name match. If not found, suggests similar options.
@@ -699,7 +699,7 @@ def home_manager_info(name: str) -> str:
 
 
 @mcp.tool()
-def home_manager_stats() -> str:
+async def home_manager_stats() -> str:
     """Get statistics about Home Manager options.
 
     Retrieves overall statistics including total options, categories, and top categories.
@@ -715,13 +715,13 @@ def home_manager_stats() -> str:
             return error("Failed to fetch Home Manager statistics")
 
         # Count categories
-        categories = {}
+        categories: dict[str, int] = {}
         for opt in options:
             cat = opt["name"].split(".")[0]
             categories[cat] = categories.get(cat, 0) + 1
 
         # Count types
-        types = {}
+        types: dict[str, int] = {}
         for opt in options:
             opt_type = opt.get("type", "unknown")
             if opt_type:
@@ -739,17 +739,17 @@ def home_manager_stats() -> str:
 • Total options: {len(options):,}
 • Categories: {len(categories)}
 • Top categories:
-  - programs: {categories.get('programs', 0):,} options
-  - services: {categories.get('services', 0):,} options
-  - home: {categories.get('home', 0):,} options
-  - wayland: {categories.get('wayland', 0):,} options
-  - xsession: {categories.get('xsession', 0):,} options"""
+  - programs: {categories.get("programs", 0):,} options
+  - services: {categories.get("services", 0):,} options
+  - home: {categories.get("home", 0):,} options
+  - wayland: {categories.get("wayland", 0):,} options
+  - xsession: {categories.get("xsession", 0):,} options"""
     except Exception as e:
         return error(str(e))
 
 
 @mcp.tool()
-def home_manager_list_options() -> str:
+async def home_manager_list_options() -> str:
     """List all Home Manager option categories.
 
     Enumerates all top-level categories with their option counts.
@@ -760,7 +760,7 @@ def home_manager_list_options() -> str:
     try:
         # Get more options to see all categories (default 100 is too few)
         options = parse_html_options(HOME_MANAGER_URL, limit=5000)
-        categories = {}
+        categories: dict[str, int] = {}
 
         for opt in options:
             name = opt["name"]
@@ -826,7 +826,7 @@ def home_manager_list_options() -> str:
 
 
 @mcp.tool()
-def home_manager_options_by_prefix(option_prefix: str) -> str:
+async def home_manager_options_by_prefix(option_prefix: str) -> str:
     """Get Home Manager options matching a specific prefix.
 
     Useful for browsing options under a category or finding exact option names.
@@ -859,7 +859,7 @@ def home_manager_options_by_prefix(option_prefix: str) -> str:
 
 
 @mcp.tool()
-def darwin_search(query: str, limit: int = 20) -> str:
+async def darwin_search(query: str, limit: int = 20) -> str:
     """Search nix-darwin (macOS) configuration options.
 
     Searches through available nix-darwin options by name and description.
@@ -898,7 +898,7 @@ def darwin_search(query: str, limit: int = 20) -> str:
 
 
 @mcp.tool()
-def darwin_info(name: str) -> str:
+async def darwin_info(name: str) -> str:
     """Get detailed information about a specific nix-darwin option.
 
     Requires an exact option name match. If not found, suggests similar options.
@@ -950,7 +950,7 @@ def darwin_info(name: str) -> str:
 
 
 @mcp.tool()
-def darwin_stats() -> str:
+async def darwin_stats() -> str:
     """Get statistics about nix-darwin options.
 
     Retrieves overall statistics including total options, categories, and top categories.
@@ -966,13 +966,13 @@ def darwin_stats() -> str:
             return error("Failed to fetch nix-darwin statistics")
 
         # Count categories
-        categories = {}
+        categories: dict[str, int] = {}
         for opt in options:
             cat = opt["name"].split(".")[0]
             categories[cat] = categories.get(cat, 0) + 1
 
         # Count types
-        types = {}
+        types: dict[str, int] = {}
         for opt in options:
             opt_type = opt.get("type", "unknown")
             if opt_type:
@@ -990,17 +990,17 @@ def darwin_stats() -> str:
 • Total options: {len(options):,}
 • Categories: {len(categories)}
 • Top categories:
-  - services: {categories.get('services', 0):,} options
-  - system: {categories.get('system', 0):,} options
-  - launchd: {categories.get('launchd', 0):,} options
-  - programs: {categories.get('programs', 0):,} options
-  - homebrew: {categories.get('homebrew', 0):,} options"""
+  - services: {categories.get("services", 0):,} options
+  - system: {categories.get("system", 0):,} options
+  - launchd: {categories.get("launchd", 0):,} options
+  - programs: {categories.get("programs", 0):,} options
+  - homebrew: {categories.get("homebrew", 0):,} options"""
     except Exception as e:
         return error(str(e))
 
 
 @mcp.tool()
-def darwin_list_options() -> str:
+async def darwin_list_options() -> str:
     """List all nix-darwin option categories.
 
     Enumerates all top-level categories with their option counts.
@@ -1011,7 +1011,7 @@ def darwin_list_options() -> str:
     try:
         # Get more options to see all categories (default 100 is too few)
         options = parse_html_options(DARWIN_URL, limit=2000)
-        categories = {}
+        categories: dict[str, int] = {}
 
         for opt in options:
             name = opt["name"]
@@ -1069,7 +1069,7 @@ def darwin_list_options() -> str:
 
 
 @mcp.tool()
-def darwin_options_by_prefix(option_prefix: str) -> str:
+async def darwin_options_by_prefix(option_prefix: str) -> str:
     """Get nix-darwin options matching a specific prefix.
 
     Useful for browsing options under a category or finding exact option names.
@@ -1102,7 +1102,7 @@ def darwin_options_by_prefix(option_prefix: str) -> str:
 
 
 @mcp.tool()
-def nixos_flakes_stats() -> str:
+async def nixos_flakes_stats() -> str:
     """Get statistics about available NixOS flakes.
 
     Retrieves statistics from the flake search index including total packages,
@@ -1133,8 +1133,8 @@ def nixos_flakes_stats() -> str:
         # Get unique flakes by sampling documents
         # Since aggregations on text fields don't work, we'll sample and count manually
         unique_urls = set()
-        type_counts = {}
-        contributor_counts = {}
+        type_counts: dict[str, int] = {}
+        contributor_counts: dict[str, int] = {}
 
         try:
             # Get a large sample of documents to count unique flakes
@@ -1225,21 +1225,8 @@ def nixos_flakes_stats() -> str:
         return error(str(e))
 
 
-@mcp.tool()
-def nixos_flakes_search(query: str, limit: int = 20, channel: str = "unstable") -> str:
-    """Search NixOS flakes by name, description, owner, or repository.
-
-    Searches the flake index for community-contributed packages and configurations.
-    Flakes are indexed separately from official packages.
-
-    Args:
-        query: The search query (flake name, description, owner, or repository)
-        limit: Maximum number of results to return (default: 20, max: 100)
-        channel: Ignored - flakes use a separate indexing system
-
-    Returns:
-        Plain text list of unique flakes with their packages and metadata
-    """
+async def _nixos_flakes_search_impl(query: str, limit: int = 20, channel: str = "unstable") -> str:
+    """Internal implementation for flakes search."""
     if not 1 <= limit <= 100:
         return error("Limit must be 1-100")
 
@@ -1250,7 +1237,7 @@ def nixos_flakes_search(query: str, limit: int = 20, channel: str = "unstable") 
         # Build query for flakes
         if query.strip() == "" or query == "*":
             # Empty or wildcard query - get all flakes
-            q = {"match_all": {}}
+            q: dict[str, Any] = {"match_all": {}}
         else:
             # Search query with multiple fields, including nested queries for flake_resolved
             q = {
@@ -1423,7 +1410,7 @@ Browse flakes at:
                 results.append(f"  {desc}")
             if flake["packages"]:
                 # Show max 5 packages, sorted
-                packages = sorted(list(flake["packages"]))[:5]
+                packages = sorted(flake["packages"])[:5]
                 if len(flake["packages"]) > 5:
                     results.append(f"  Packages: {', '.join(packages)}, ... ({len(flake['packages'])} total)")
                 else:
@@ -1436,7 +1423,7 @@ Browse flakes at:
         return error(str(e))
 
 
-def _version_key(version_str: str) -> tuple:
+def _version_key(version_str: str) -> tuple[int, int, int]:
     """Convert version string to tuple for proper sorting."""
     try:
         parts = version_str.split(".")
@@ -1457,12 +1444,12 @@ def _version_key(version_str: str) -> tuple:
         # Pad with zeros if needed
         while len(numeric_parts) < 3:
             numeric_parts.append(0)
-        return tuple(numeric_parts)
+        return (numeric_parts[0], numeric_parts[1], numeric_parts[2])
     except Exception:
         return (0, 0, 0)
 
 
-def _format_nixhub_found_version(package_name: str, version: str, found_version: Dict) -> str:
+def _format_nixhub_found_version(package_name: str, version: str, found_version: dict[str, Any]) -> str:
     """Format a found version for display."""
     results = []
     results.append(f"✓ Found {package_name} version {version}\n")
@@ -1506,7 +1493,7 @@ def _format_nixhub_found_version(package_name: str, version: str, found_version:
     return "\n".join(results)
 
 
-def _format_nixhub_release(release: Dict, package_name: Optional[str] = None) -> List[str]:
+def _format_nixhub_release(release: dict[str, Any], package_name: str | None = None) -> list[str]:
     """Format a single NixHub release for display."""
     results = []
     version = release.get("version", "unknown")
@@ -1553,7 +1540,25 @@ def _format_nixhub_release(release: Dict, package_name: Optional[str] = None) ->
 
 
 @mcp.tool()
-def nixhub_package_versions(package_name: str, limit: int = 10) -> str:
+async def nixos_flakes_search(query: str, limit: int = 20, channel: str = "unstable") -> str:
+    """Search NixOS flakes by name, description, owner, or repository.
+
+    Searches the flake index for community-contributed packages and configurations.
+    Flakes are indexed separately from official packages.
+
+    Args:
+        query: The search query (flake name, description, owner, or repository)
+        limit: Maximum number of results to return (default: 20, max: 100)
+        channel: Ignored - flakes use a separate indexing system
+
+    Returns:
+        Plain text list of unique flakes with their packages and metadata
+    """
+    return await _nixos_flakes_search_impl(query, limit, channel)
+
+
+@mcp.tool()
+async def nixhub_package_versions(package_name: str, limit: int = 10) -> str:
     """Get version history and nixpkgs commit hashes for a specific package from NixHub.io.
 
     Use this tool when users need specific package versions or commit hashes for reproducible builds.
@@ -1649,7 +1654,7 @@ def nixhub_package_versions(package_name: str, limit: int = 10) -> str:
 
 
 @mcp.tool()
-def nixhub_find_version(package_name: str, version: str) -> str:
+async def nixhub_find_version(package_name: str, version: str) -> str:
     """Find a specific version of a package in NixHub with smart search.
 
     Automatically searches with increasing limits to find the requested version.
@@ -1675,7 +1680,7 @@ def nixhub_find_version(package_name: str, version: str) -> str:
     # Try with incremental limits
     limits_to_try = [10, 25, 50]
     found_version = None
-    all_versions = []
+    all_versions: list[dict[str, Any]] = []
 
     for limit in limits_to_try:
         try:
@@ -1784,5 +1789,10 @@ def nixhub_find_version(package_name: str, version: str) -> str:
     return "\n".join(results)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Run the MCP server."""
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()

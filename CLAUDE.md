@@ -1,4 +1,4 @@
-# MCP-NixOS Project Guidelines (v1.0.0)
+# MCP-NixOS Project Guidelines (v1.0.1)
 
 ## 🚀 Project Philosophy
 This project underwent a massive refactoring in v1.0.0, reducing the codebase from 9,755 lines to ~500 lines (94.6% reduction) while maintaining 100% functionality. We proved that most "enterprise" code is just complexity for complexity's sake.
@@ -17,18 +17,17 @@ This project underwent a massive refactoring in v1.0.0, reducing the codebase fr
 **IMPORTANT: Always run commands through `nix develop -c <command>` to ensure proper environment setup!**
 
 - **Enter development shell**: `nix develop`
-- **Run the server**: `nix develop -c run`
+- **Run the server**: `nix develop -c run` or `uv run mcp-nixos`
 - **Test commands**:
-  - All tests: `nix develop -c run-tests`
+  - All tests: `nix develop -c run-tests` or `uv run pytest`
   - Unit tests only: `nix develop -c run-tests -- --unit`
   - Integration tests only: `nix develop -c run-tests -- --integration`
   - Single test: `nix develop -c run-tests -- tests/path/to/test_file.py::TestClass::test_function -v`
   - With coverage: `nix develop -c run-tests -- --cov=mcp_nixos`
 - **Code quality**:
-  - Format code: `nix develop -c format`
-  - Lint code: `nix develop -c lint`
-  - Type check: `nix develop -c typecheck`
-  - Pylint check: `nix develop -c check-pylint`
+  - Format code: `nix develop -c format` (uses ruff)
+  - Lint code: `nix develop -c lint` (uses ruff)
+  - Type check: `nix develop -c typecheck` (uses mypy)
 - **Package management**:
   - Build: `nix develop -c build`
   - Publish to PyPI: `nix develop -c publish`
@@ -133,15 +132,13 @@ Official repository: [https://github.com/utensils/mcp-nixos](https://github.com/
   - `deploy-website`: Deploys to S3/CloudFront when website files change
   - `create-release`: Auto-creates release when merge commit contains `release:`
   - `publish`: Publishes to PyPI on version tags
-- **Test Exclusions**: Anthropic evaluation tests excluded via `-m "not anthropic"` marker
 - **Codecov integration**: Uploads coverage and test results
 - **No redundant runs**: Smart conditions prevent the PR→merge→tag triple-run issue
 
 ## Architecture
 
-### Core Components (Just 2 Files!)
-- **server.py**: All 13 MCP tools in ~500 lines of direct, functional code
-- **__main__.py**: Simple entry point (28 lines)
+### Core Components (Just 1 File!)
+- **server.py**: All 13 MCP tools in ~500 lines of direct, functional code with main() entry point
 
 ### What We Removed (And Don't Miss)
 - ❌ Cache layer - Stateless operation, no cache corruption
@@ -198,19 +195,6 @@ Official repository: [https://github.com/utensils/mcp-nixos](https://github.com/
   - Ensure tests work consistently across Windows, macOS, and Linux
 
 ## Testing Guidelines
-
-### Evaluation Testing with Anthropic API
-- **Purpose**: Test MCP tools with real AI behavior to ensure practical usability
-- **Setup**: Copy `.env.example` to `.env` and add your Anthropic API key
-- **Local Development**: `run-tests` always includes eval tests (all tests run)
-- **CI/CD Behavior**:
-  - **Repository members**: All tests run including eval tests
-  - **External contributors**: Eval tests are skipped to prevent API credit abuse
-  - Detection is automatic based on GitHub permissions
-- **Run Manually**: `python run_evals.py` or `pytest tests/test_evals_anthropic.py -v`
-- **Scenarios**: Package installation, service configuration, Home Manager integration
-- **Pass Criteria**: 80% of expected behaviors must be observed
-- **Security**: Never commit API keys; use environment variables in CI/CD
 
 ### Key Implementation Improvements
 - **Dynamic Channel Resolution**: Automatically discovers available channels and determines current stable
@@ -332,14 +316,12 @@ All tools return human-readable plain text, not XML or JSON.
 - `test_real_world_scenarios.py` - Complete user workflows (10 tests)
 - `test_channel_handling.py` - Channel validation and suggestions
 - `test_flake_evals.py` - Flake search evaluation tests
-- `test_flake_evals_anthropic.py` - Flake search Anthropic API tests (requires API key)
-- `test_evals_anthropic.py` - Anthropic API evaluation tests (requires API key)
 
 **Running Tests**
 ```bash
 # IMPORTANT: Always use 'nix develop -c' to ensure proper environment!
 
-# All tests (includes Anthropic evals in local development)
+# All tests
 nix develop -c run-tests
 
 # Specific test file
@@ -347,9 +329,6 @@ nix develop -c run-tests -- tests/test_plain_text_output.py -v
 
 # Integration tests only
 nix develop -c run-tests -- --integration
-
-# Include Anthropic evaluation tests explicitly (requires API key)
-nix develop -c run-tests -- -m "anthropic"
 
 # With coverage
 nix develop -c run-tests -- --cov=mcp_nixos
@@ -362,17 +341,16 @@ nix develop -c run-tests -- --cov=mcp_nixos
 - No filesystem dependencies (stateless)
 
 
-### Dependency Management (v1.0.0 - Lean & Mean)
+### Dependency Management (v1.0.1 - Modern & Async)
 - Project uses `pyproject.toml` for dependency specification (PEP 621)
-- Core dependencies (reduced from 5 to 3):
-  - `mcp>=1.6.0`: Base MCP framework
-  - `requests>=2.32.3`: HTTP client for API interactions
-  - `beautifulsoup4>=4.13.3`: HTML parsing for documentation
+- Core dependencies (optimized for async):
+  - `fastmcp>=2.11.0`: Modern async MCP framework (replaces old mcp)
+  - `requests>=2.32.4`: HTTP client for API interactions
+  - `beautifulsoup4>=4.13.4`: HTML parsing for documentation
 - Optional dependencies defined in `[project.optional-dependencies]`:
-  - `dev`: Development tools (pytest, black, flake8, etc.)
-  - `evals`: Evaluation testing (anthropic, python-dotenv)
+  - `dev`: Development tools (pytest, ruff, mypy, etc.)
   - `win`: Windows-specific dependencies (pywin32)
-- Nix flake installs both `dev` and `evals` dependencies for complete development environment
+- Nix flake installs core dependencies; FastMCP installed via pip/uv
 
 ### Installation & Usage
 - Install: `pip install mcp-nixos`, `uv pip install mcp-nixos`, `uvx mcp-nixos`
@@ -382,11 +360,10 @@ nix develop -c run-tests -- --cov=mcp_nixos
   - Build: `docker build -t mcp-nixos .`
   - Deployed on Smithery.ai as a hosted service
 - Development:
-  - Environment: `nix develop` (includes all dev and eval dependencies)
+  - Environment: `nix develop` (includes all dev dependencies)
   - Run server: `nix develop -c run`
   - Tests: `nix develop -c run-tests`, `nix develop -c run-tests -- --unit`, `nix develop -c run-tests -- --integration`
-  - Evaluation tests: `nix develop -c run-tests -- -m "anthropic"` (requires `ANTHROPIC_API_KEY`)
-  - Code quality: `nix develop -c lint`, `nix develop -c typecheck`, `nix develop -c format`, `nix develop -c check-pylint`
+  - Code quality: `nix develop -c lint`, `nix develop -c typecheck`, `nix develop -c format` (all using ruff + mypy)
   - Stats: `nix develop -c loc`
   - Package: `nix develop -c build`, `nix develop -c publish`
   - GitHub operations: Use `gh` tool for repository management and troubleshooting
@@ -418,22 +395,31 @@ nix develop -c run-tests -- --cov=mcp_nixos
 
 ## Quick Implementation Reference
 
-**File Structure (v1.0.0)**
+**File Structure (v1.0.1)**
 ```
 mcp_nixos/
-├── server.py      # ~500 lines - All 13 MCP tools
-└── __main__.py    # 28 lines - Entry point
+└── server.py      # ~500 lines - All 13 MCP tools + main entry point
 
-tests/
-├── test_plain_text_output.py     # Plain text validation
-├── test_real_integration.py      # Real API tests
-├── test_server_comprehensive.py  # Unit tests
-├── test_nixos_option_info.py     # NixOS option lookup tests
-└── test_nixos_info_option_evals.py  # Option eval tests
+tests/                           # Reorganized for clarity (15 files)
+├── test_channels.py             # Channel handling tests
+├── test_edge_cases.py           # Edge case tests
+├── test_evals.py                # AI evaluation tests
+├── test_flakes.py               # Flake search tests
+├── test_integration.py          # Real API integration tests
+├── test_main.py                 # Main module tests
+├── test_mcp_behavior.py         # MCP behavior tests
+├── test_mcp_tools.py            # MCP tool tests
+├── test_nixhub.py               # NixHub integration tests
+├── test_nixos_stats.py          # Statistics tests
+├── test_options.py              # Option lookup tests
+├── test_plain_text_output.py    # Plain text validation
+├── test_real_world_scenarios.py # Real-world usage tests
+├── test_regression.py           # Regression tests
+└── test_server.py               # Server unit tests
 ```
 
 **Adding a New Tool**
-1. Add function with `@mcp.tool()` decorator in server.py
+1. Add async function with `@mcp.tool()` decorator in server.py
 2. Return plain text string (no XML!)
 3. Use consistent formatting (bullets, key-value pairs)
 4. Add tests for plain text output
