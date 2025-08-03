@@ -160,6 +160,42 @@ Just one. We're minimalists now:
 |----------|-------------|---------|
 | `ELASTICSEARCH_URL` | NixOS API endpoint | https://search.nixos.org/backend |
 
+## Troubleshooting
+
+### Nix Sandbox Error
+
+If you encounter this error when running via Nix:
+```
+error: derivation '/nix/store/...-python3.11-watchfiles-1.0.4.drv' specifies a sandbox profile, 
+but this is only allowed when 'sandbox' is 'relaxed'
+```
+
+**Solution**: Run with relaxed sandbox mode:
+```bash
+nix run --option sandbox relaxed github:utensils/mcp-nixos --
+```
+
+**Why this happens**: The `watchfiles` package (a transitive dependency via MCP) requires custom sandbox permissions for file system monitoring. This is only allowed when Nix's sandbox is in 'relaxed' mode instead of the default 'strict' mode.
+
+**Permanent fix**: Add to your `/etc/nix/nix.conf`:
+```
+sandbox = relaxed
+```
+
+### Connection Timeouts
+
+First-time runs may timeout while downloading dependencies. **Solution**: Pre-cache by running once:
+```bash
+# For Nix users
+nix run github:utensils/mcp-nixos
+
+# Or install to profile
+nix profile install github:utensils/mcp-nixos
+```
+
+### JetBrains IDE Issues
+
+If using with JetBrains IDEs (IntelliJ, PyCharm, etc.), ensure the MCP server is pre-cached before configuring in the IDE to avoid Copilot agent crashes.
 
 ## Acknowledgments
 
