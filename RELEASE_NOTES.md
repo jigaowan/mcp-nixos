@@ -1,3 +1,71 @@
+# MCP-NixOS: v1.0.2 Release Notes - Infrastructure Improvements
+
+## Overview
+
+MCP-NixOS v1.0.2 is a maintenance release focused on CI/CD improvements, security fixes, and enhanced Docker support. This release adds manual workflow dispatch capabilities, GHCR package visibility automation, and improves the deployment pipeline.
+
+## Changes in v1.0.2
+
+### 🚀 CI/CD Enhancements
+
+- **Manual Workflow Dispatch**: Added ability to manually trigger Docker builds for specific tags
+- **GHCR Package Visibility**: Automated setting of GitHub Container Registry packages to public visibility
+- **Continuous Docker Builds**: Docker images now build automatically on main branch pushes
+- **FlakeHub Publishing**: Integrated automated FlakeHub deployment workflow
+- **Workflow Separation**: Split website deployment into dedicated workflow for better CI/CD organization
+
+### 🔧 Bug Fixes
+
+- **Tag Validation**: Fixed regex character class in Docker tag validation
+- **API Resilience**: Added fallback channels when NixOS API discovery fails (#52, #54)
+- **Documentation Fixes**: Escaped quotes in usage page to fix ESLint errors
+- **Security**: Patched PrismJS DOM Clobbering vulnerability
+
+### 🛠️ Development Experience
+
+- **Code Review Automation**: Enhanced Claude Code Review with sticky comments
+- **Agent Support**: Added MCP and Python development subagents
+- **CI Optimization**: Skip CI builds on documentation-only changes
+- **Improved Docker Support**: Better multi-architecture builds (amd64, arm64)
+
+### 📦 Dependencies
+
+- All dependencies remain unchanged from v1.0.1
+- Maintained compatibility with FastMCP 2.x
+
+## Installation
+
+```bash
+# Install with pip
+pip install mcp-nixos==1.0.2
+
+# Install with uv
+uv pip install mcp-nixos==1.0.2
+
+# Install with uvx
+uvx mcp-nixos==1.0.2
+```
+
+## Docker Images
+
+```bash
+# Pull from Docker Hub
+docker pull utensils/mcp-nixos:1.0.2
+
+# Pull from GitHub Container Registry
+docker pull ghcr.io/utensils/mcp-nixos:1.0.2
+```
+
+## Migration Notes
+
+This is a drop-in replacement for v1.0.1 with no user-facing changes. All improvements are infrastructure and workflow related.
+
+## Contributors
+
+- James Brink (@utensils) - Chief Infrastructure Engineer
+
+---
+
 # MCP-NixOS: v1.0.1 Release Notes - FastMCP 2.x Migration
 
 ## Overview
