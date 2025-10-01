@@ -99,9 +99,9 @@ gh release create vX.Y.Z \
 - 🔒 [Important fix]
 
 ## Installation
-\`\`\`bash
+```bash
 pip install mcp-nixos==X.Y.Z
-\`\`\`
+```
 
 See [RELEASE_NOTES.md](https://github.com/utensils/mcp-nixos/blob/main/RELEASE_NOTES.md) for details."
 ```
