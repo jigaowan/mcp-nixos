@@ -1,3 +1,60 @@
+# MCP-NixOS: v1.0.3 Release Notes - Encoding Fix
+
+## Overview
+
+MCP-NixOS v1.0.3 fixes encoding errors when parsing Home Manager and nix-darwin documentation, ensuring robust operation with various HTML encodings from CDN edge servers.
+
+## Changes in v1.0.3
+
+### 🔧 Bug Fixes
+
+- **HTML Encoding Support**: Fixed parsing errors with non-UTF-8 encodings (windows-1252, ISO-8859-1, UTF-8 with BOM) in documentation (#58)
+- **CDN Resilience**: Enhanced robustness when fetching docs from different CDN edge nodes with varying configurations
+- **Test Coverage**: Added comprehensive encoding tests for all HTML parsing functions
+
+### 🛠️ Development Experience
+
+- **Release Workflow**: Improved release command documentation with clearer formatting
+- **Test Suite**: Updated 26 tests to properly handle byte content in mock responses
+
+### 📦 Dependencies
+
+- No changes from previous version
+- Maintained compatibility with FastMCP 2.x
+
+## Installation
+
+```bash
+# Install with pip
+pip install mcp-nixos==1.0.3
+
+# Install with uv
+uv pip install mcp-nixos==1.0.3
+
+# Install with uvx
+uvx mcp-nixos==1.0.3
+```
+
+## Docker Images
+
+```bash
+# Pull from Docker Hub
+docker pull utensils/mcp-nixos:1.0.3
+
+# Pull from GitHub Container Registry
+docker pull ghcr.io/utensils/mcp-nixos:1.0.3
+```
+
+## Migration Notes
+
+This is a drop-in replacement for v1.0.2 with no user-facing changes. The fix resolves intermittent "unknown encoding: windows-1252" errors when fetching documentation.
+
+## Contributors
+
+- James Brink (@utensils) - Fixed encoding handling in HTML parser
+
+---
+
 # MCP-NixOS: v1.0.2 Release Notes - Infrastructure Improvements
 
 ## Overview
