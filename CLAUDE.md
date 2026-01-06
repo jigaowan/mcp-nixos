@@ -62,11 +62,24 @@ mypy mcp_nixos/
 
 ## Testing Approach
 
-- 367+ async tests using pytest-asyncio
+- Async tests using pytest-asyncio
 - Real API calls (no mocks) for integration tests
 - Unit tests marked with `@pytest.mark.unit`
 - Integration tests marked with `@pytest.mark.integration`
 - Tests ensure plain text output (no XML/JSON leakage)
+
+### Running Specific Tests
+
+```bash
+# Run a single test file
+pytest tests/test_server.py
+
+# Run a single test function
+pytest tests/test_server.py::test_nixos_search -v
+
+# Run tests matching a pattern
+pytest tests/ -k "nixos" -v
+```
 
 ## Local Development with MCP Clients
 
@@ -111,3 +124,11 @@ Create `.mcp.json` in project root (already gitignored):
 ## Environment Variables
 
 - `ELASTICSEARCH_URL`: Override NixOS API endpoint (default: https://search.nixos.org/backend)
+
+## Release Process
+
+Use the `/release` skill to automate version releases. This handles:
+- Version bump in `pyproject.toml`
+- Changelog update in `RELEASE_NOTES.md`
+- Git tag and GitHub release creation
+- Triggers CI/CD for PyPI and Docker publishing

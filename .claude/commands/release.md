@@ -37,11 +37,13 @@ git log v1.0.2..HEAD --oneline
 ### 2. Update Version
 
 Version bump types:
+
 - **Patch** (x.y.Z): Bug fixes, CI/CD, docs
 - **Minor** (x.Y.0): New features, backward-compatible
 - **Major** (X.0.0): Breaking changes
 
 Edit `pyproject.toml`:
+
 ```toml
 version = "X.Y.Z"
 ```
@@ -104,6 +106,7 @@ pip install mcp-nixos==X.Y.Z
 ```
 
 See [RELEASE_NOTES.md](https://github.com/utensils/mcp-nixos/blob/main/RELEASE_NOTES.md) for details."
+
 ```
 
 ### 6. Monitor Pipeline
@@ -117,11 +120,13 @@ gh run watch <RUN_ID>
 ## Verify
 
 ### PyPI
+
 ```bash
 uvx mcp-nixos@X.Y.Z --help
 ```
 
 ### Docker Hub & GHCR
+
 ```bash
 docker pull utensils/mcp-nixos:X.Y.Z
 docker pull ghcr.io/utensils/mcp-nixos:X.Y.Z
