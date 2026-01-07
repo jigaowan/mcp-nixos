@@ -1,3 +1,89 @@
+# MCP-NixOS: v2.1.0 Release Notes - Pure Nix Flake
+
+## Overview
+
+MCP-NixOS v2.1.0 converts to a pure Nix flake build system and adds FlakeHub integration for easier installation. This release fixes build compatibility with nixpkgs-unstable and provides a proper Nix overlay for seamless integration into NixOS and Home Manager configurations.
+
+## Changes in v2.1.0
+
+### 🚀 Pure Nix Flake Build System
+
+- **Complete Flake Rewrite**: Migrated from hybrid venv/pip approach to pure Nix
+- **Python 3.14 Support**: Now builds with Python 3.14 from nixpkgs
+- **Proper Overlay**: Exposes `overlays.default` for easy integration into NixOS/Home Manager
+- **flake-parts**: Refactored to use flake-parts for cleaner multi-system support
+- **Build Fix**: Added overlay to handle fastmcp/mcp version constraints in nixpkgs-unstable
+
+### 🌐 FlakeHub Integration
+
+- **FlakeHub Publishing**: Package now available on FlakeHub for simplified installation
+- **Semantic Versioning**: Proper versioning support via FlakeHub
+
+### 📦 Installation
+
+**Via FlakeHub:**
+```nix
+{
+  inputs.mcp-nixos.url = "https://flakehub.com/f/utensils/mcp-nixos/*.tar.gz";
+}
+```
+
+**Via GitHub:**
+```nix
+{
+  inputs.mcp-nixos.url = "github:utensils/mcp-nixos";
+
+  # Use the overlay
+  nixpkgs.overlays = [ mcp-nixos.overlays.default ];
+
+  # Then add to packages
+  environment.systemPackages = [ pkgs.mcp-nixos ];  # NixOS
+  home.packages = [ pkgs.mcp-nixos ];               # Home Manager
+}
+```
+
+### 🔧 Bug Fixes
+
+- **nixpkgs-unstable Compatibility**: Fixed build failure caused by fastmcp requiring `mcp<1.17.0` while nixpkgs has `mcp>=1.25.0`
+
+### 📦 Dependencies
+
+- No Python dependency changes
+- Build system now uses pure nixpkgs packages
+
+## Installation
+
+```bash
+# Install with pip
+pip install mcp-nixos==2.1.0
+
+# Install with uv
+uv pip install mcp-nixos==2.1.0
+
+# Run directly with nix
+nix run github:utensils/mcp-nixos
+```
+
+## Docker Images
+
+```bash
+# Pull from Docker Hub
+docker pull utensils/mcp-nixos:2.1.0
+
+# Pull from GitHub Container Registry
+docker pull ghcr.io/utensils/mcp-nixos:2.1.0
+```
+
+## Migration Notes
+
+This is a drop-in replacement for v2.0.0 with no user-facing changes to the MCP tools. The changes are entirely in the Nix build infrastructure. If you were experiencing build failures with v2.0.0 on nixpkgs-unstable, this release resolves that issue.
+
+## Contributors
+
+- James Brink (@utensils) - Nix Flake Architect
+
+---
+
 # MCP-NixOS: v2.0.0 Release Notes - The Great Consolidation
 
 ## Overview
