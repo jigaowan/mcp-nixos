@@ -1,3 +1,8 @@
+---
+allowed-tools: mcp__nixos__nix, mcp__nixos__nix_versions
+description: Test MCP NixOS Tools (project)
+---
+
 # Test MCP NixOS Tools
 
 Test the `nix` and `nix_versions` MCP tools by running through these scenarios:
@@ -10,6 +15,7 @@ Test the `nix` and `nix_versions` MCP tools by running through these scenarios:
 - `action=search, source=home-manager, query=git`
 - `action=search, source=darwin, query=dock`
 - `action=search, source=flakes, query=atuin`
+- `action=search, source=flakehub, query=nixpkgs`
 - `action=search, source=nixvim, query=telescope`
 
 **Info** (package and option):
@@ -17,6 +23,7 @@ Test the `nix` and `nix_versions` MCP tools by running through these scenarios:
 - `action=info, source=nixos, type=option, query=services.nginx.enable`
 - `action=info, source=home-manager, query=programs.git.enable`
 - `action=info, source=darwin, query=system.defaults.dock.autohide`
+- `action=info, source=flakehub, query=NixOS/nixpkgs`
 - `action=info, source=nixvim, query=plugins.telescope.enable`
 
 **Stats** (all sources):
@@ -24,6 +31,7 @@ Test the `nix` and `nix_versions` MCP tools by running through these scenarios:
 - `action=stats, source=home-manager`
 - `action=stats, source=darwin`
 - `action=stats, source=flakes`
+- `action=stats, source=flakehub`
 - `action=stats, source=nixvim`
 
 **Options browsing**:

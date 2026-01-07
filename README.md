@@ -67,11 +67,14 @@ An MCP server providing accurate, real-time information about:
 - **Home Manager** - 5K+ options for dotfile enthusiasts
 - **nix-darwin** - 1K+ macOS settings Apple doesn't document
 - **Nixvim** - 5K+ options for Neovim configuration via [NuschtOS search](https://github.com/NuschtOS/search)
+- **FlakeHub** - 600+ flakes from [FlakeHub.com](https://flakehub.com) registry
 - **Package versions** - Historical versions with commit hashes via [NixHub.io](https://www.nixhub.io)
 
 ## The Tools
 
 Just two. We consolidated 17 tools into 2 because your AI's context window isn't infinite.
+
+**~365 tokens total.** That's it. While other MCP servers are hogging your context like it's Black Friday, we're sipping minimalist tea in the corner. Your AI gets NixOS superpowers without the bloat.
 
 ### `nix` - Unified Query Tool
 
@@ -94,7 +97,8 @@ nix(action, query, source, type, channel, limit)
 | `nixos` | Packages, options, programs |
 | `home-manager` | Home Manager options |
 | `darwin` | nix-darwin options |
-| `flakes` | Community flakes |
+| `flakes` | Community flakes (search.nixos.org) |
+| `flakehub` | FlakeHub registry (flakehub.com) |
 | `nixvim` | Nixvim Neovim configuration options |
 
 **Examples:**
@@ -117,6 +121,12 @@ nix(action="search", query="telescope", source="nixvim")
 
 # Get Nixvim option info
 nix(action="info", query="plugins.telescope.enable", source="nixvim")
+
+# Search FlakeHub
+nix(action="search", query="nixpkgs", source="flakehub")
+
+# Get FlakeHub flake info
+nix(action="info", query="NixOS/nixpkgs", source="flakehub")
 
 # Get stats
 nix(action="stats", source="nixos", channel="stable")
@@ -174,6 +184,7 @@ mypy mcp_nixos/      # Type check
 
 - **[NixHub.io](https://www.nixhub.io)** - Package version history
 - **[search.nixos.org](https://search.nixos.org)** - Official NixOS search
+- **[FlakeHub](https://flakehub.com)** - Flake registry by Determinate Systems
 - **[Jetify](https://www.jetify.com)** - Creators of Devbox and NixHub
 - **[NuschtOS](https://github.com/NuschtOS/search)** - Static option search infrastructure powering Nixvim support
 - **[Nixvim](https://github.com/nix-community/nixvim)** - Neovim configuration framework for Nix
