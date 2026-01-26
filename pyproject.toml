@@ -31,7 +31,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "build>=1.2.2",
-    "pytest>=8.4.1",
+    "pytest>=9.0.0",
     "pytest-cov>=6.2.1",
     "pytest-asyncio>=1.1.0",
     "pytest-xdist>=3.6.0",
@@ -84,11 +84,25 @@ ignore_errors = true
 module = "fastmcp.*"
 ignore_missing_imports = true
 
-[tool.pytest.ini_options]
+[tool.pytest]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = "test_*.py"
-addopts = "--cov=mcp_nixos --cov-report=term-missing"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = [
+    "--verbose",
+    "--cov=mcp_nixos",
+    "--cov-report=term-missing",
+]
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "slow: marks tests as slow (deselect with `-m 'not slow'`)",
+    "integration: marks tests that require external services or interact with external resources",
+    "unit: marks tests as unit tests that don't require external services",
+    "not_integration: explicitly marks tests that should be excluded from integration test runs",
+    "asyncio: mark a test as an async test",
+]
 
 [tool.coverage.run]
 source = ["mcp_nixos"]
