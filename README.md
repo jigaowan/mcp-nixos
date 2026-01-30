@@ -69,6 +69,9 @@ An MCP server providing accurate, real-time information about:
 - **nix-darwin** - 1K+ macOS settings Apple doesn't document
 - **Nixvim** - 5K+ options for Neovim configuration via [NuschtOS search](https://github.com/NuschtOS/search)
 - **FlakeHub** - 600+ flakes from [FlakeHub.com](https://flakehub.com) registry
+- **Noogle** - 2K+ Nix functions with type signatures via [noogle.dev](https://noogle.dev)
+- **NixOS Wiki** - Community documentation and guides from [wiki.nixos.org](https://wiki.nixos.org)
+- **nix.dev** - Official Nix tutorials and guides from [nix.dev](https://nix.dev)
 - **Package versions** - Historical versions with commit hashes via [NixHub.io](https://www.nixhub.io)
 - **Local flake inputs** - Explore your pinned flake dependencies directly from the Nix store (requires Nix)
 
@@ -103,6 +106,9 @@ nix(action, query, source, type, channel, limit)
 | `flakes` | Community flakes (search.nixos.org) |
 | `flakehub` | FlakeHub registry (flakehub.com) |
 | `nixvim` | Nixvim Neovim configuration options |
+| `noogle` | Nix function signatures and docs (noogle.dev) |
+| `wiki` | NixOS Wiki articles (wiki.nixos.org) |
+| `nix-dev` | Official Nix documentation (nix.dev) |
 
 **Examples:**
 
@@ -130,6 +136,24 @@ nix(action="search", query="nixpkgs", source="flakehub")
 
 # Get FlakeHub flake info
 nix(action="info", query="NixOS/nixpkgs", source="flakehub")
+
+# Search Noogle for Nix functions
+nix(action="search", query="mapAttrs", source="noogle")
+
+# Get Noogle function info
+nix(action="info", query="lib.attrsets.mapAttrs", source="noogle")
+
+# Browse Noogle function categories
+nix(action="options", source="noogle", query="lib.strings")
+
+# Search NixOS Wiki
+nix(action="search", query="nvidia", source="wiki")
+
+# Get Wiki page info
+nix(action="info", query="Flakes", source="wiki")
+
+# Search nix.dev documentation
+nix(action="search", query="packaging tutorial", source="nix-dev")
 
 # Get stats
 nix(action="stats", source="nixos", channel="stable")
@@ -247,6 +271,7 @@ mypy mcp_nixos/      # Type check
 - **[search.nixos.org](https://search.nixos.org)** - Official NixOS search
 - **[FlakeHub](https://flakehub.com)** - Flake registry by Determinate Systems
 - **[Jetify](https://www.jetify.com)** - Creators of Devbox and NixHub
+- **[Noogle](https://noogle.dev)** - Nix function search engine
 - **[NuschtOS](https://github.com/NuschtOS/search)** - Static option search infrastructure powering Nixvim support
 - **[Nixvim](https://github.com/nix-community/nixvim)** - Neovim configuration framework for Nix
 
