@@ -66,6 +66,16 @@
             mainProgram = "mcp-nixos";
           };
         };
+      mcpNixosModule = import ./nixos/mcp-nixos.nix;
+      mcpDarwinModule = import ./darwin/mcp-nixos.nix;
+      mcpNixosModules = {
+        mcp-nixos = mcpNixosModule;
+        default = mcpNixosModule;
+      };
+      mcpDarwinModules = {
+        mcp-nixos = mcpDarwinModule;
+        default = mcpDarwinModule;
+      };
     in
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [
@@ -79,6 +89,9 @@
         overlays.default = final: _: {
           mcp-nixos = mkMcpNixos { pkgs = final; };
         };
+
+        nixosModules = mcpNixosModules;
+        darwinModules = mcpDarwinModules;
 
         lib.mkMcpNixos = mkMcpNixos;
       };

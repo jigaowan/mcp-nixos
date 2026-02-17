@@ -59,6 +59,31 @@
 
 Your AI now has access to real NixOS data instead of making things up. You're welcome.
 
+## Server Options
+
+The CLI supports multiple transports and validates arguments on startup.
+
+```bash
+# Show help
+mcp-nixos --help
+
+# STDIO (default)
+mcp-nixos --transport stdio
+
+# HTTP
+mcp-nixos --transport http --host 127.0.0.1 --port 8000 --path /mcp
+
+# SSE
+mcp-nixos --transport sse --host 127.0.0.1 --port 8000 --path /mcp
+```
+
+Options:
+
+- `--transport`: `stdio` (default), `http`, or `sse`
+- `--host`: Host to bind for HTTP/SSE
+- `--port`: Port to bind for HTTP/SSE
+- `--path`: HTTP path for MCP endpoint (default: `/mcp`)
+
 ## What Is This?
 
 An MCP server providing accurate, real-time information about:
@@ -250,16 +275,41 @@ Or use the flake directly with the provided overlay:
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     mcp-nixos.url = "github:utensils/mcp-nixos";
+    nix-darwin.url = "github:LnL7/nix-darwin";
+    home-manager.url = "github:nix-community/home-manager";
   };
 
-  outputs = { self, nixpkgs, mcp-nixos, ... }: {
+  outputs = { self, nixpkgs, mcp-nixos, nix-darwin, home-manager, ... }: {
     # Example: NixOS configuration
     nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
-      modules = [{
-        nixpkgs.overlays = [ mcp-nixos.overlays.default ];
-        environment.systemPackages = [ pkgs.mcp-nixos ];
-      }];
+      modules = [
+        mcp-nixos.nixosModules.default
+        {
+          nixpkgs.overlays = [ mcp-nixos.overlays.default ];
+          environment.systemPackages = [ pkgs.mcp-nixos ];
+
+          services.mcp-nixos = {
+            enable = true;
+            transport = "http";
+            host = "127.0.0.1";
+            port = 8000;
+            path = "/mcp";
+          };
+        }
+      ];
+    };
+
+    # Example: nix-darwin configuration
+    darwinConfigurations.my-mac = nix-darwin.lib.darwinSystem {
+      system = "aarch64-darwin";
+      modules = [
+        mcp-nixos.darwinModules.default
+        {
+          nixpkgs.overlays = [ mcp-nixos.overlays.default ];
+          environment.systemPackages = [ pkgs.mcp-nixos ];
+        }
+      ];
     };
 
     # Example: Home Manager standalone

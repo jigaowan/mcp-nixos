@@ -9,8 +9,11 @@ Provides search and query capabilities for:
 All responses are formatted as human-readable plain text for optimal LLM interaction.
 """
 
+import argparse
 import asyncio
+import inspect
 import re
+import sys
 from typing import Annotated, Any
 
 from fastmcp import FastMCP
@@ -379,10 +382,62 @@ async def nix_versions(
         return error(str(e))
 
 
-def main() -> None:
-    """Run the MCP server."""
+def _build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="mcp-nixos",
+        description="MCP-NixOS server",
+    )
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "http", "sse"],
+        default="stdio",
+        help="Transport to serve (default: stdio).",
+    )
+    parser.add_argument(
+        "--host",
+        default=None,
+        help="Host to bind for HTTP/SSE transports.",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="Port to bind for HTTP/SSE transports.",
+    )
+    parser.add_argument(
+        "--path",
+        default=None,
+        help="HTTP path for MCP endpoint (default: /mcp).",
+    )
+    return parser
+
+
+def _filter_run_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
     try:
-        mcp.run()
+        params = inspect.signature(mcp.run).parameters
+    except (TypeError, ValueError):
+        return kwargs
+    if any(param.kind == inspect.Parameter.VAR_KEYWORD for param in params.values()):
+        return kwargs
+    return {key: value for key, value in kwargs.items() if key in params}
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Run the MCP server."""
+    parser = _build_arg_parser()
+    args = parser.parse_args(argv)
+
+    run_kwargs: dict[str, Any] = {"transport": args.transport}
+    if args.host is not None:
+        run_kwargs["host"] = args.host
+    if args.port is not None:
+        run_kwargs["port"] = args.port
+    if args.path is not None:
+        run_kwargs["path"] = args.path
+
+    run_kwargs = _filter_run_kwargs(run_kwargs)
+    try:
+        mcp.run(**run_kwargs)
     except KeyboardInterrupt:
         pass
 

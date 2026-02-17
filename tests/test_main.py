@@ -12,7 +12,7 @@ class TestMainModule:
     @patch("mcp_nixos.server.mcp")
     def test_main_execution(self, mock_mcp):
         mock_mcp.run.return_value = None
-        main()
+        main([])
         mock_mcp.run.assert_called_once()
 
     def test_mcp_exists(self):
@@ -41,5 +41,6 @@ class TestServerImport:
 
     def test_main_signature(self):
         sig = signature(main)
-        assert len(sig.parameters) == 0
+        assert len(sig.parameters) == 1
+        assert "argv" in sig.parameters
         assert callable(main)
